@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catalog Management - GraphQL API</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --sidebar-bg: #f7f9f7;
+            --main-bg: #ffffff;
+            --primary: #1f6e52;
+            --primary-hover: #16563f;
+            --text-dark: #1f2937;
+            --text-muted: #6b7280;
+            --border-color: #e5e7eb;
+            --card-bg: #ffffff;
+        }
+        body { 
+            background-color: var(--sidebar-bg); font-family: 'Inter', sans-serif;
+            color: var(--text-dark); margin: 0; padding: 0; height: 100vh; display: flex;
+        }
+        
+        /* Sidebar */
+        .sidebar {
+            width: 280px; background: var(--sidebar-bg); border-right: 1px solid var(--border-color);
+            display: flex; flex-direction: column; padding: 24px 20px; height: 100vh;
+            position: fixed; overflow-y: auto;
+        }
+        .logo-area { display: flex; align-items: center; gap: 10px; margin-bottom: 40px; }
+        .logo-icon { background: var(--primary); color: white; width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.2rem; }
+        .logo-text { font-weight: 800; font-size: 1.25rem; letter-spacing: -0.5px;}
+        
+        .menu-label { font-size: 0.75rem; font-weight: 700; color: #9ca3af; text-transform: uppercase; margin-bottom: 12px; letter-spacing: 0.5px; }
+        .menu-item { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-radius: 8px; color: var(--text-dark); font-weight: 600; text-decoration: none; margin-bottom: 4px; transition: 0.2s; cursor: pointer; }
+        .menu-item:hover { background: #e5e7eb; }
+        .menu-item.active { background: #e8f0eb; color: var(--primary); }
+        .menu-item .badge { background: #d1fae5; color: var(--primary); margin-left: auto; border-radius: 4px; font-weight: 700;}
+        
+        .graphiql-card { background: #f0f3f1; border-radius: 12px; padding: 20px; margin-top: auto; margin-bottom: 20px; }
+        .graphiql-card h6 { font-weight: 700; font-size: 0.95rem; margin-bottom: 8px; }
+        .graphiql-card p { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 16px; line-height: 1.5; }
+        .graphiql-link { font-size: 0.85rem; font-weight: 600; color: var(--text-dark); text-decoration: none; display: flex; justify-content: space-between; align-items: center; }
+        .graphiql-link:hover { color: var(--primary); }
+        
+        .user-profile { display: flex; align-items: center; gap: 12px; padding-top: 16px; border-top: 1px solid var(--border-color); }
+        .avatar { width: 36px; height: 36px; background: #fde68a; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; }
+        .user-info h6 { margin: 0; font-size: 0.85rem; font-weight: 700; }
+        .user-info p { margin: 0; font-size: 0.75rem; color: var(--text-muted); }
+        
+        /* Main Content */
+        .main-content { margin-left: 280px; flex: 1; background: var(--main-bg); min-height: 100vh; padding: 0; display: flex; flex-direction: column; }
+        .topbar { padding: 16px 40px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
+        .breadcrumb { margin: 0; font-size: 0.85rem; font-weight: 500; color: var(--text-muted); }
+        .breadcrumb span { color: var(--text-dark); }
+        .tech-badge { font-size: 0.75rem; border: 1px solid var(--border-color); padding: 4px 12px; border-radius: 16px; color: var(--text-muted); font-weight: 600;}
+        
+        .content-body { padding: 40px; flex: 1; overflow-y: auto; background: #fafafa;}
+        .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; }
+        .page-title { font-weight: 800; font-size: 2rem; margin-bottom: 4px; }
+        .page-subtitle { color: var(--text-muted); font-size: 0.95rem; }
+        .btn-add { background: var(--primary); color: white; font-weight: 600; padding: 10px 20px; border-radius: 8px; border: none; display: flex; align-items: center; gap: 8px; transition: 0.2s;}
+        .btn-add:hover { background: var(--primary-hover); }
+
+        /* Stats Cards */
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 40px; }
+        .stat-card { background: white; border: 1px solid var(--border-color); border-radius: 12px; padding: 24px; display: flex; justify-content: space-between; align-items: flex-start; box-shadow: 0 1px 3px rgba(0,0,0,0.02);}
+        .stat-label { font-size: 0.85rem; color: var(--text-muted); font-weight: 600; margin-bottom: 12px; }
+        .stat-value { font-size: 2rem; font-weight: 700; margin-bottom: 12px; line-height: 1; }
+        .stat-desc { font-size: 0.75rem; color: var(--text-muted); margin: 0; }
+        .stat-icon { width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+        .icon-green { background: #e8f0eb; color: var(--primary); }
+        .icon-orange { background: #fff7ed; color: #ea580c; }
+        .icon-purple { background: #f3e8ff; color: #9333ea; }
+        
+        /* Table Area */
+        .list-container { background: white; border: 1px solid var(--border-color); border-radius: 12px; padding: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.02);}
+        .list-header { padding: 24px; border-bottom: 1px solid var(--border-color); }
+        .list-title-area { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+        .list-title { font-weight: 700; font-size: 1.1rem; margin: 0; }
+        .list-count-badge { background: #f3f4f6; color: var(--text-muted); padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
+        
+        .toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
+        .toolbar-left { display: flex; gap: 12px; flex: 1; }
+        .search-box { position: relative; max-width: 300px; width: 100%; }
+        .search-box i { position: absolute; left: 12px; top: 10px; color: var(--text-muted); }
+        .search-box input { width: 100%; padding: 8px 12px 8px 36px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.9rem; }
+        .search-box input:focus { outline: none; border-color: var(--primary); }
+        .filter-select { padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.9rem; background: white; color: var(--text-dark); cursor: pointer; outline: none; }
+        
+        .toolbar-right { display: flex; gap: 12px; }
+        .btn-outline-custom { background: white; border: 1px solid var(--border-color); padding: 8px 16px; border-radius: 8px; font-size: 0.9rem; font-weight: 600; color: var(--text-dark); display: flex; align-items: center; gap: 8px; cursor: pointer; transition: 0.2s;}
+        .btn-outline-custom:hover { background: #f9fafb; }
+        
+        .table-custom { width: 100%; margin: 0; border-collapse: collapse; }
+        .table-custom th { padding: 16px 24px; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; border-bottom: 1px solid var(--border-color); background: #fcfcfc;}
+        .table-custom td { padding: 16px 24px; vertical-align: middle; border-bottom: 1px solid var(--border-color); font-size: 0.9rem; font-weight: 500; }
+        .table-custom tr:last-child td { border-bottom: none; }
+        .table-custom tr:hover td { background: #f9fafb; }
+        
+        .product-cell { display: flex; align-items: center; gap: 16px; }
+        .product-img { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; border: 1px solid var(--border-color); background: white;}
+        .product-name { font-weight: 700; color: var(--text-dark); margin-bottom: 2px;}
+        .product-sku { font-size: 0.75rem; color: var(--text-muted); margin: 0; }
+        
+        .cat-badge { background: #f3f4f6; color: var(--text-muted); padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; }
+        .price-text { font-weight: 700; }
+        .stock-indicator { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--text-muted); }
+        .dot { width: 8px; height: 8px; border-radius: 50%; background: #10b981; }
+        
+        .action-link { color: var(--text-muted); text-decoration: none; font-size: 0.85rem; margin-right: 12px; transition: 0.2s; cursor: pointer;}
+        .action-link:hover { color: var(--primary); }
+        .action-link.delete:hover { color: #ef4444; }
+
+        /* Modal styling */
+        .modal-content { border-radius: 16px; border: none; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
+        .modal-header { border-bottom: 1px solid var(--border-color); padding: 20px 24px; }
+        .modal-title { font-weight: 700; font-size: 1.2rem; }
+        .modal-body { padding: 24px; }
+        .form-label { font-weight: 600; font-size: 0.85rem; color: var(--text-dark); }
+        .form-control, .form-select { border-radius: 8px; padding: 10px 12px; border: 1px solid var(--border-color); font-size: 0.95rem; }
+        .form-control:focus, .form-select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(31, 110, 82, 0.1); }
+
+        .loader { border: 3px solid #f3f3f3; border-top: 3px solid var(--primary); border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; margin: 0 auto;}
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="logo-area">
+            <div class="logo-icon">C.</div>
+            <div class="logo-text">catalog <span style="color: #d1d5db;">/</span></div>
+        </div>
+        
+        <div class="menu-label">KHÔNG GIAN QUẢN LÝ</div>
+        <div class="menu-item active" id="tab-product" onclick="switchTab('product')">
+            <i class="bi bi-grid"></i> Sản phẩm
+            <span class="badge" id="sidebar-product-count">0</span>
+        </div>
+        <div class="menu-item" id="tab-category" onclick="switchTab('category')">
+            <i class="bi bi-list-ul"></i> Danh mục
+            <span class="badge" id="sidebar-category-count">0</span>
+        </div>
+        
+        <div class="graphiql-card">
+            <h6><i class="bi bi-asterisk"></i> Mọi thứ, ngăn nắp hơn.</h6>
+            <p>Quản lý sản phẩm và danh mục trong cùng một không gian.</p>
+            <a href="/graphiql" target="_blank" class="graphiql-link">
+                Mở GraphiQL <i class="bi bi-arrow-up-right"></i>
+            </a>
+        </div>
+        
+        <div class="user-profile">
+            <div class="avatar">PT</div>
+            <div class="user-info">
+                <h6>Phan Tuấn Thanh</h6>
+                <p>24133054 - Bài tập tuần 7</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="topbar">
+            <div class="breadcrumb">Không gian làm việc <span class="mx-2">/</span> <span id="breadcrumb-current">Sản phẩm</span></div>
+            <div class="tech-badge"><span class="text-success me-1">●</span> GraphQL + Spring Boot</div>
+        </div>
+        
+        <div class="content-body" id="view-product">
+            <div class="page-header">
+                <div>
+                    <div class="text-uppercase text-muted" style="font-size: 0.75rem; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 8px;">CATALOG MANAGEMENT</div>
+                    <h1 class="page-title">Sản phẩm</h1>
+                    <p class="page-subtitle">Một góc nhìn đầy đủ cho mọi sản phẩm của bạn.</p>
+                </div>
+                <button class="btn-add" data-bs-toggle="modal" data-bs-target="#productModal" onclick="openProductModal()">
+                    <i class="bi bi-plus-lg"></i> Thêm sản phẩm
+                </button>
+            </div>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div>
+                        <div class="stat-label">Tổng sản phẩm</div>
+                        <div class="stat-value" id="stat-total-products">0</div>
+                        <p class="stat-desc">Trong toàn bộ danh mục</p>
+                    </div>
+                    <div class="stat-icon icon-green"><i class="bi bi-grid-3x3-gap-fill"></i></div>
+                </div>
+                <div class="stat-card">
+                    <div>
+                        <div class="stat-label">Danh mục</div>
+                        <div class="stat-value" id="stat-total-categories">0</div>
+                        <p class="stat-desc">Sắp xếp sản phẩm theo nhóm</p>
+                    </div>
+                    <div class="stat-icon icon-orange"><i class="bi bi-card-list"></i></div>
+                </div>
+                <div class="stat-card">
+                    <div>
+                        <div class="stat-label">Tổng tồn kho</div>
+                        <div class="stat-value" id="stat-total-stock">0</div>
+                        <p class="stat-desc">Sản phẩm sẵn có trong kho</p>
+                    </div>
+                    <div class="stat-icon icon-purple"><i class="bi bi-box-seam-fill"></i></div>
+                </div>
+            </div>
+            
+            <div class="list-container">
+                <div class="list-header">
+                    <div class="list-title-area">
+                        <h4 class="list-title">Danh sách sản phẩm</h4>
+                        <span class="list-count-badge" id="list-count">0</span>
+                    </div>
+                    <p class="text-muted mb-3" style="font-size: 0.85rem;" id="sort-info">Giá được sắp xếp mặc định.</p>
+                    
+                    <div class="toolbar">
+                        <div class="toolbar-left">
+                            <div class="search-box">
+                                <i class="bi bi-search"></i>
+                                <input type="text" id="searchInput" placeholder="Tìm tên sản phẩm..." onkeyup="filterProducts()">
+                            </div>
+                            <select class="filter-select" id="categoryFilter" onchange="filterByCategory()">
+                                <option value="">Tất cả danh mục</option>
+                            </select>
+                        </div>
+                        <div class="toolbar-right">
+                            <button class="btn-outline-custom" onclick="loadAllProducts()">
+                                <i class="bi bi-arrow-clockwise"></i> Làm mới
+                            </button>
+                            <button class="btn-outline-custom" onclick="loadProductsSortedByPrice()" id="sortBtn">
+                                <i class="bi bi-arrow-up"></i> Giá tăng dần
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <table class="table-custom">
+                    <thead>
+                        <tr>
+                            <th>SẢN PHẨM</th>
+                            <th>DANH MỤC</th>
+                            <th>GIÁ BÁN</th>
+                            <th>TỒN KHO</th>
+                            <th>NGƯỜI ĐĂNG</th>
+                            <th class="text-end">HÀNH ĐỘNG</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body">
+                        <tr><td colspan="6" class="text-center py-4"><div class="loader"></div></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="content-body" id="view-category" style="display: none;">
+            <div class="page-header">
+                <div>
+                    <div class="text-uppercase text-muted" style="font-size: 0.75rem; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 8px;">CATALOG MANAGEMENT</div>
+                    <h1 class="page-title">Danh mục</h1>
+                    <p class="page-subtitle">Quản lý và nhóm các sản phẩm của bạn.</p>
+                </div>
+                <button class="btn-add" data-bs-toggle="modal" data-bs-target="#categoryModal" onclick="openCategoryModal()">
+                    <i class="bi bi-plus-lg"></i> Thêm danh mục
+                </button>
+            </div>
+            <div class="list-container">
+                <div class="list-header">
+                    <div class="list-title-area">
+                        <h4 class="list-title">Danh sách danh mục</h4>
+                        <span class="list-count-badge" id="cat-list-count">0</span>
+                    </div>
+                </div>
+                <table class="table-custom">
+                    <thead>
+                        <tr>
+                            <th>DANH MỤC</th>
+                            <th>ID</th>
+                            <th class="text-end">HÀNH ĐỘNG</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-category-body">
+                        <tr><td colspan="3" class="text-center py-4"><div class="loader"></div></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Product Modal -->
+    <div class="modal fade" id="productModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="productModalLabel">Thêm Sản Phẩm</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="productForm">
+                        <input type="hidden" id="productId">
+                        <div class="mb-3">
+                            <label class="form-label">Tên Sản Phẩm</label>
+                            <input type="text" class="form-control" id="productTitle" required>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <label class="form-label">Giá (đ)</label>
+                                <input type="number" step="0.01" class="form-control" id="productPrice" required>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">Tồn kho</label>
+                                <input type="number" class="form-control" id="productQty" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Danh mục</label>
+                            <select class="form-select" id="productCategory" required></select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Hình ảnh (URL)</label>
+                            <input type="text" class="form-control" id="productImages">
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label">Mô tả chi tiết</label>
+                            <textarea class="form-control" id="productDesc" rows="3"></textarea>
+                        </div>
+                        <button type="button" class="btn-add w-100 justify-content-center" onclick="saveProduct()">Lưu thông tin</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Category Modal -->
+    <div class="modal fade" id="categoryModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="categoryModalLabel">Thêm Danh Mục</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="categoryForm">
+                        <input type="hidden" id="catId">
+                        <div class="mb-3">
+                            <label class="form-label">Tên Danh Mục</label>
+                            <input type="text" class="form-control" id="catName" required>
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label">Hình ảnh (URL)</label>
+                            <input type="text" class="form-control" id="catImages">
+                        </div>
+                        <button type="button" class="btn-add w-100 justify-content-center" onclick="saveCategory()">Lưu thông tin</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const GRAPHQL_URL = '/graphql';
+        let productModal, categoryModal;
+        let allProducts = [], allCategories = [];
+        let displayedProducts = [];
+
+        async function fetchGraphQL(query, variables = {}) {
+            try {
+                const response = await fetch(GRAPHQL_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query, variables })
+                });
+                const res = await response.json();
+                if (res.errors) console.error("GraphQL Errors:", res.errors);
+                return res;
+            } catch (error) {
+                console.error("Fetch Error:", error);
+            }
+        }
+
+        async function initData() {
+            productModal = new bootstrap.Modal(document.getElementById('productModal'));
+            categoryModal = new bootstrap.Modal(document.getElementById('categoryModal'));
+            await loadCategories();
+            await loadAllProducts();
+        }
+
+        function switchTab(tab) {
+            document.getElementById('tab-product').classList.remove('active');
+            document.getElementById('tab-category').classList.remove('active');
+            document.getElementById('tab-' + tab).classList.add('active');
+            
+            document.getElementById('view-product').style.display = 'none';
+            document.getElementById('view-category').style.display = 'none';
+            document.getElementById('view-' + tab).style.display = 'block';
+            
+            if(tab === 'product') {
+                document.getElementById('breadcrumb-current').innerText = 'Sản phẩm';
+            } else {
+                document.getElementById('breadcrumb-current').innerText = 'Danh mục';
+            }
+        }
+
+        async function loadCategories() {
+            const query = `query { getAllCategories { id name images } }`;
+            const data = await fetchGraphQL(query);
+            if (!data || !data.data) return;
+            
+            allCategories = data.data.getAllCategories;
+            document.getElementById('stat-total-categories').innerText = allCategories.length;
+            document.getElementById('sidebar-category-count').innerText = allCategories.length;
+            
+            // Render filter dropdowns
+            let selectHtml = '<option value="">Tất cả danh mục</option>';
+            let modalSelectHtml = '<option value="">-- Chọn danh mục --</option>';
+            
+            allCategories.forEach(cat => {
+                selectHtml += `<option value="${cat.id}">${cat.name}</option>`;
+                modalSelectHtml += `<option value="${cat.id}">${cat.name}</option>`;
+            });
+            document.getElementById('categoryFilter').innerHTML = selectHtml;
+            document.getElementById('productCategory').innerHTML = modalSelectHtml;
+            
+            // Render Category Table
+            renderCategoryTable();
+        }
+
+        function renderCategoryTable() {
+            const tbody = document.getElementById('table-category-body');
+            document.getElementById('cat-list-count').innerText = allCategories.length;
+            
+            if (allCategories.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" class="text-center py-5 text-muted">Không có danh mục nào.</td></tr>`;
+                return;
+            }
+            
+            let html = '';
+            allCategories.forEach(cat => {
+                const imgUrl = cat.images || 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=100&q=80';
+                html += `
+                <tr>
+                    <td>
+                        <div class="product-cell">
+                            <img src="${imgUrl}" class="product-img" alt="${cat.name}" onerror="this.src='https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=100&q=80'">
+                            <p class="product-name m-0">${cat.name}</p>
+                        </div>
+                    </td>
+                    <td><span class="cat-badge">CAT-${cat.id}</span></td>
+                    <td class="text-end">
+                        <a href="javascript:void(0)" class="action-link" onclick='editCategory(${JSON.stringify(cat).replace(/'/g, "&apos;")})'>Sửa</a>
+                        <a href="javascript:void(0)" class="action-link delete" onclick="deleteCategory(${cat.id})">Xóa</a>
+                    </td>
+                </tr>`;
+            });
+            tbody.innerHTML = html;
+        }
+
+        async function loadAllProducts() {
+            document.getElementById('sort-info').innerText = 'Danh sách toàn bộ sản phẩm.';
+            document.getElementById('categoryFilter').value = "";
+            document.getElementById('searchInput').value = "";
+            document.getElementById('table-body').innerHTML = '<tr><td colspan="6" class="text-center py-4"><div class="loader"></div></td></tr>';
+            
+            const query = `
+                query {
+                    getAllProducts {
+                        id title price quantity description images
+                        category { id name }
+                    }
+                }
+            `;
+            const data = await fetchGraphQL(query);
+            if(data && data.data) {
+                allProducts = data.data.getAllProducts;
+                displayedProducts = [...allProducts];
+                updateStats();
+                renderTable();
+            }
+        }
+
+        async function loadProductsSortedByPrice() {
+            document.getElementById('sort-info').innerText = 'Giá được sắp xếp từ thấp đến cao.';
+            document.getElementById('table-body').innerHTML = '<tr><td colspan="6" class="text-center py-4"><div class="loader"></div></td></tr>';
+            const query = `
+                query {
+                    getProductsSortedByPrice {
+                        id title price quantity description images
+                        category { id name }
+                    }
+                }
+            `;
+            const data = await fetchGraphQL(query);
+            if(data && data.data) {
+                allProducts = data.data.getProductsSortedByPrice;
+                filterProducts();
+            }
+        }
+
+        function filterByCategory() {
+            const catId = document.getElementById('categoryFilter').value;
+            if(catId) document.getElementById('sort-info').innerText = 'Lọc theo danh mục đã chọn.';
+            filterProducts();
+        }
+
+        function filterProducts() {
+            const searchKeyword = document.getElementById('searchInput').value.toLowerCase();
+            const catId = document.getElementById('categoryFilter').value;
+            
+            displayedProducts = allProducts.filter(p => {
+                const matchName = p.title.toLowerCase().includes(searchKeyword);
+                const matchCat = catId ? (p.category && p.category.id === catId) : true;
+                return matchName && matchCat;
+            });
+            renderTable();
+        }
+
+        function updateStats() {
+            document.getElementById('stat-total-products').innerText = allProducts.length;
+            document.getElementById('sidebar-product-count').innerText = allProducts.length;
+            const totalStock = allProducts.reduce((sum, p) => sum + (p.quantity || 0), 0);
+            document.getElementById('stat-total-stock').innerText = totalStock;
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('table-body');
+            document.getElementById('list-count').innerText = displayedProducts.length;
+            
+            if (displayedProducts.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-5 text-muted">Không tìm thấy sản phẩm nào.</td></tr>`;
+                return;
+            }
+            
+            let html = '';
+            displayedProducts.forEach(p => {
+                const imgUrl = p.images || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=100&q=80';
+                const catName = p.category ? p.category.name : 'Chưa phân loại';
+                
+                html += `
+                <tr>
+                    <td>
+                        <div class="product-cell">
+                            <img src="${imgUrl}" class="product-img" alt="${p.title}" onerror="this.src='https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=100&q=80'">
+                            <div>
+                                <p class="product-name">${p.title}</p>
+                                <p class="product-sku">SP-00${p.id}</p>
+                            </div>
+                        </div>
+                    </td>
+                    <td><span class="cat-badge">${catName}</span></td>
+                    <td class="price-text">${p.price.toLocaleString()} đ</td>
+                    <td>
+                        <div class="stock-indicator">
+                            <div class="dot" ${p.quantity === 0 ? 'style="background:#ef4444;"' : ''}></div>
+                            ${p.quantity}
+                        </div>
+                    </td>
+                    <td style="font-size: 0.85rem; color: #6b7280;">Phan Tuấn Thanh</td>
+                    <td class="text-end">
+                        <a href="javascript:void(0)" class="action-link" onclick='editProduct(${JSON.stringify(p).replace(/'/g, "&apos;")})'>Sửa</a>
+                        <a href="javascript:void(0)" class="action-link delete" onclick="deleteProduct(${p.id})">Xóa</a>
+                    </td>
+                </tr>`;
+            });
+            tbody.innerHTML = html;
+        }
+
+        document.addEventListener('DOMContentLoaded', initData);
+
+        // --- Product Form ---
+        function openProductModal() {
+            document.getElementById('productForm').reset();
+            document.getElementById('productId').value = '';
+            document.getElementById('productModalLabel').innerText = 'Thêm Sản Phẩm';
+        }
+        function editProduct(product) {
+            document.getElementById('productId').value = product.id;
+            document.getElementById('productTitle').value = product.title;
+            document.getElementById('productQty').value = product.quantity;
+            document.getElementById('productPrice').value = product.price;
+            document.getElementById('productDesc').value = product.description;
+            document.getElementById('productImages').value = product.images || '';
+            if(product.category) document.getElementById('productCategory').value = product.category.id;
+            document.getElementById('productModalLabel').innerText = 'Sửa Sản Phẩm';
+            productModal.show();
+        }
+        async function saveProduct() {
+            const titleInput = document.getElementById('productTitle').value;
+            const priceInput = document.getElementById('productPrice').value;
+            const catInput = document.getElementById('productCategory').value;
+            if(!titleInput || !priceInput || !catInput) { alert("Vui lòng nhập đủ thông tin bắt buộc!"); return; }
+
+            const id = document.getElementById('productId').value;
+            const input = {
+                title: titleInput, quantity: parseInt(document.getElementById('productQty').value) || 0,
+                price: parseFloat(priceInput) || 0, description: document.getElementById('productDesc').value,
+                images: document.getElementById('productImages').value, categoryId: catInput
+            };
+
+            const mutation = id 
+                ? `mutation($id: ID!, $input: ProductInput!) { updateProduct(id: $id, input: $input) { id } }`
+                : `mutation($input: ProductInput!) { createProduct(input: $input) { id } }`;
+                
+            await fetchGraphQL(mutation, id ? { id, input } : { input });
+            productModal.hide();
+            loadAllProducts(); 
+        }
+        async function deleteProduct(id) {
+            if(confirm('Bạn có chắc muốn xóa sản phẩm này?')) {
+                await fetchGraphQL(`mutation($id: ID!) { deleteProduct(id: $id) }`, { id });
+                loadAllProducts();
+            }
+        }
+
+        // --- Category Form ---
+        function openCategoryModal() {
+            document.getElementById('categoryForm').reset();
+            document.getElementById('catId').value = '';
+            document.getElementById('categoryModalLabel').innerText = 'Thêm Danh Mục';
+        }
+        function editCategory(cat) {
+            document.getElementById('catId').value = cat.id;
+            document.getElementById('catName').value = cat.name;
+            document.getElementById('catImages').value = cat.images || '';
+            document.getElementById('categoryModalLabel').innerText = 'Sửa Danh Mục';
+            categoryModal.show();
+        }
+        async function saveCategory() {
+            const nameInput = document.getElementById('catName').value;
+            if(!nameInput) { alert("Vui lòng nhập tên danh mục!"); return; }
+
+            const id = document.getElementById('catId').value;
+            const input = { name: nameInput, images: document.getElementById('catImages').value };
+
+            const mutation = id 
+                ? `mutation($id: ID!, $input: CategoryInput!) { updateCategory(id: $id, input: $input) { id } }`
+                : `mutation($input: CategoryInput!) { createCategory(input: $input) { id } }`;
+                
+            await fetchGraphQL(mutation, id ? { id, input } : { input });
+            categoryModal.hide();
+            loadCategories(); 
+        }
+        async function deleteCategory(id) {
+            if(confirm('Bạn có chắc muốn xóa danh mục này? Nó sẽ ảnh hưởng đến các sản phẩm thuộc danh mục!')) {
+                await fetchGraphQL(`mutation($id: ID!) { deleteCategory(id: $id) }`, { id });
+                loadCategories();
+            }
+        }
+    </script>
+</body>
+</html>
